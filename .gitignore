@@ -1,0 +1,17 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+
+# PyCharm project settings
+.idea/
+
+# OS metadata
+.DS_Store
+
+# Sensitive files
+.env
+recipients.csv
