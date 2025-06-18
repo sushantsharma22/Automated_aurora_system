@@ -1,28 +1,30 @@
 from aurora import fetch, process, notify, config
-import csv, base64, os, datetime as dt
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import os, datetime as dt, json
 
-# 🧪 Toggle this to True to force send emails (for testing)
-FORCE_SEND = True
+FORCE_SEND = True  # Always send for testing
 
 def load_recipients(city_name):
-    """CSV stored in a GitHub secret – base64-encoded, one line per recipient."""
-    rows = base64.b64decode(os.environ["RECIPIENT_CSV"]).decode().splitlines()
-    return [dict(email=r[1], name=r[2])
-            for r in csv.reader(rows) if r[0] == city_name]
+    creds_dict = json.loads(os.environ["GOOGLE_SHEETS_CREDS"])
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+
+    sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).worksheet("Recipients")
+    rows = sheet.get_all_records()
+    return [r for r in rows if r["city"].lower() == city_name.lower()]
 
 def run():
     today = dt.date.today()
     for city in config.CITIES:
         print(f"\n🔍 Evaluating: {city['name']}")
-
-        # Fetch all relevant data
         data = dict(
             kp=fetch.kp_now(),
             cloud=fetch.cloud_pct(city["lat"], city["lon"]),
             sun=fetch.sun_times(city["lat"], city["lon"], today),
             moon=fetch.moon_illumination(today),
         )
-
         ev = process.evaluate(city, data)
         d = ev["details"]
 

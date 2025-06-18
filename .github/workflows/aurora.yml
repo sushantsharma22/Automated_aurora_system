@@ -1,21 +1,26 @@
 name: Aurora-Alert
 on:
   schedule:
-    - cron: '*/15 * * * *'     # every 15 min UTC
-  workflow_dispatch:           # manual trigger button
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
       - name: Run monitor
         env:
-          MAIL_FROM:      ${{ secrets.MAIL_FROM }}
-          MAIL_APP_PASS:  ${{ secrets.MAIL_APP_PASS }}
-          RECIPIENT_CSV:  ${{ secrets.RECIPIENT_CSV }}
-
+          MAIL_FROM:           ${{ secrets.MAIL_FROM }}
+          MAIL_APP_PASS:       ${{ secrets.MAIL_APP_PASS }}
+          GOOGLE_SHEET_ID:     ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEETS_CREDS: ${{ secrets.GOOGLE_SHEETS_CREDS }}
         run: python -m aurora.main
