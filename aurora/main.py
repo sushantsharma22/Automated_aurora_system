@@ -3,9 +3,8 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os, datetime as dt, json
 
-FORCE_SEND = True  # Always send for testing
-
 def load_recipients(city_name):
+    """Load recipients from Google Sheets matching city."""
     creds_dict = json.loads(os.environ["GOOGLE_SHEETS_CREDS"])
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
@@ -13,7 +12,29 @@ def load_recipients(city_name):
 
     sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).worksheet("Recipients")
     rows = sheet.get_all_records()
-    return [r for r in rows if r["city"].lower() == city_name.lower()]
+    recipients = []
+
+    for idx, row in enumerate(rows):
+        if row["city"].lower() == city_name.lower():
+            row["_sheet_row"] = idx + 2  # account for 1-based sheet + header row
+            recipients.append(row)
+
+    return recipients, sheet
+
+def should_notify(recipient, score, today):
+    """Return True if user hasn't been notified today or score is high."""
+    last = recipient.get("last_notified")
+    if not last or last.strip() == "":
+        return True
+    if score >= 50:
+        return True
+    return last != str(today)
+
+def update_last_notified(sheet, recipients, today):
+    """Write today's date to last_notified column for notified users."""
+    for r in recipients:
+        row = r["_sheet_row"]
+        sheet.update_cell(row, 4, str(today))  # col 4 = last_notified
 
 def run():
     today = dt.date.today()
@@ -31,13 +52,16 @@ def run():
         print(f"📊 Kp: {d['kp']} | Clouds: {d['cloud']}% | Moon: {d['moon_pct']}%")
         print(f"🕒 Time: {d['time']} | Score: {ev['score']} | Send: {ev['send']}")
 
-        if ev["send"] or FORCE_SEND:
-            recips = load_recipients(city["name"])
-            if recips:
-                print(f"📨 Sending to: {[r['email'] for r in recips]}")
-                notify.send_email(recips, city, ev)
+        if ev["send"]:
+            all_recipients, sheet = load_recipients(city["name"])
+            recipients = [r for r in all_recipients if should_notify(r, ev["score"], today)]
+
+            if recipients:
+                print(f"📨 Sending to: {[r['email'] for r in recipients]}")
+                notify.send_email(recipients, city, ev)
+                update_last_notified(sheet, recipients, today)
             else:
-                print("⚠️ No recipients found for this city.")
+                print("✅ Recipients already notified today or skipped.")
         else:
             print("🚫 Conditions not met; skipping send.")
 
