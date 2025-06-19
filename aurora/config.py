@@ -17,7 +17,7 @@ CITIES = [
 ]
 
 # global thresholds
-CLOUD_MAX = 30  # %
+CLOUD_MAX = 50  # %
 CHECK_INTERVAL = timedelta(minutes=15)
 
 # optional admin email (if you want to use it later)
