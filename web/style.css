@@ -1,6 +1,6 @@
 /* Background & Base Styles */
 body {
-  background: url('images/v2osk-Ovn1hyBge38-unsplash.jpg') no-repeat center center fixed;
+  background: url('https://raw.githubusercontent.com/sushantsharma22/Automated_aurora_system/main/web/images/v2osk-Ovn1hyBge38-unsplash.jpg') no-repeat center center fixed;
   background-size: cover;
   color: #e6f7ff;
   font-family: 'Segoe UI', sans-serif;
@@ -18,7 +18,7 @@ body {
   background: rgba(10, 25, 20, 0.4); /* aurora green tinted overlay */
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 0 20px #00ff99; /* green glow */
+  box-shadow: 0 0 20px #00ff99;
   width: 100%;
   max-width: 400px;
   box-sizing: border-box;
