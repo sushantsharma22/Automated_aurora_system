@@ -1,69 +1,115 @@
+# aurora/main.py
+
+import datetime as dt
+import pytz
 from aurora import fetch, process, notify, config
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import os, datetime as dt, json
+import os, json
+
+# Local timezone
+TZ = pytz.timezone("America/Toronto")
+
 
 def load_recipients(city_name):
-    """Load recipients from Google Sheets matching city."""
-    creds_dict = json.loads(os.environ["GOOGLE_SHEETS_CREDS"])
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    """
+    Load sheet rows for this city.
+    """
+    creds = json.loads(os.environ["GOOGLE_SHEETS_CREDS"])
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds  = ServiceAccountCredentials.from_json_keyfile_dict(creds, scope)
     client = gspread.authorize(creds)
-
-    sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).worksheet("Recipients")
+    sheet  = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]) \
+                   .worksheet("Recipients")
     rows = sheet.get_all_records()
-    recipients = []
-
+    recs = []
     for idx, row in enumerate(rows):
         if row["city"].lower() == city_name.lower():
-            row["_sheet_row"] = idx + 2  # account for 1-based sheet + header row
-            recipients.append(row)
+            row["_sheet_row"] = idx + 2
+            recs.append(row)
+    return recs, sheet
 
-    return recipients, sheet
 
-def should_notify(recipient, score, today):
-    """Return True if user hasn't been notified today or score is high."""
-    last = recipient.get("last_notified")
-    if not last or last.strip() == "":
+def should_notify_rt(rec, now_dt):
+    """
+    Real-time: only if never sent, or ≥4h since last_rt_notified.
+    """
+    last = rec.get("last_rt_notified", "").strip()
+    if not last:
         return True
-    if score >= 50:
-        return True
-    return last != str(today)
+    last_dt = dt.datetime.fromisoformat(last)
+    return (now_dt - last_dt) >= dt.timedelta(hours=4)
 
-def update_last_notified(sheet, recipients, today):
-    """Write today's date to last_notified column for notified users."""
-    for r in recipients:
-        row = r["_sheet_row"]
-        sheet.update_cell(row, 4, str(today))  # col 4 = last_notified
+
+def should_notify_forecast(rec, today):
+    """
+    Forecast: only once per calendar day.
+    """
+    last = rec.get("last_notified", "").strip()
+    return (not last) or (last != str(today))
+
+
+def update_last_rt(sheet, recs, now_iso):
+    for r in recs:
+        sheet.update_cell(r["_sheet_row"], 5, now_iso)  # assumes col 5 is last_rt_notified
+
+
+def update_last_notified(sheet, recs, today):
+    for r in recs:
+        sheet.update_cell(r["_sheet_row"], 4, str(today))  # col 4 is last_notified
+
 
 def run():
-    today = dt.date.today()
+    now_dt = dt.datetime.now(TZ)
+    today  = now_dt.date()
+
     for city in config.CITIES:
-        print(f"\n🔍 Evaluating: {city['name']}")
-        data = dict(
-            kp=fetch.kp_now(),
-            cloud=fetch.cloud_pct(city["lat"], city["lon"]),
-            sun=fetch.sun_times(city["lat"], city["lon"], today),
-            moon=fetch.moon_illumination(today),
-        )
-        ev = process.evaluate(city, data)
-        d = ev["details"]
+        print(f"\n🔍 Evaluating {city['name']} at {now_dt.isoformat()}")
 
-        print(f"📊 Kp: {d['kp']} | Clouds: {d['cloud']}% | Moon: {d['moon_pct']}%")
-        print(f"🕒 Time: {d['time']} | Score: {ev['score']} | Send: {ev['send']}")
+        # ─── Real-time ───────────────────────────────
+        data_now = {
+            "kp":    fetch.kp_now(),
+            "cloud": fetch.cloud_pct(city["lat"], city["lon"]),
+            "sun":   fetch.sun_times(city["lat"], city["lon"], today),
+            "moon":  fetch.moon_illumination(today),
+        }
+        ev_now = process.evaluate_now(city, data_now)
+        d_now  = ev_now["details"]
 
-        if ev["send"]:
-            all_recipients, sheet = load_recipients(city["name"])
-            recipients = [r for r in all_recipients if should_notify(r, ev["score"], today)]
+        print(f"▶ Real-time: kp={d_now['kp']}, cloud={d_now['cloud_pct']}%, "
+              f"moon={d_now['moon_pct']}%, score={ev_now['score']}, send={ev_now['send']}")
 
-            if recipients:
-                print(f"📨 Sending to: {[r['email'] for r in recipients]}")
-                notify.send_email(recipients, city, ev)
-                update_last_notified(sheet, recipients, today)
+        if ev_now["send"]:
+            recs, sheet = load_recipients(city["name"])
+            to_send = [r for r in recs if should_notify_rt(r, dt.datetime.fromisoformat(d_now["time"]))]
+            if to_send:
+                print(f"✉️ Sending real-time to {[r['email'] for r in to_send]}")
+                notify.send_email(to_send, city, ev_now)
+                update_last_rt(sheet, to_send, d_now["time"])
             else:
-                print("✅ Recipients already notified today or skipped.")
+                print("✔️ Real-time: cooldown in effect, skipping.")
+
+        # ─── Forecast ────────────────────────────────
+        send_fc, details_fc = process.evaluate_forecast(city, fetch.kp_forecast())
+        if send_fc:
+            # only at the designated 10 AM hour
+            nt = dt.datetime.fromisoformat(details_fc["notify_time"])
+            if (now_dt.date() == nt.date() and now_dt.hour == nt.hour):
+                recs_fc, sheet_fc = load_recipients(city["name"])
+                to_send_fc = [r for r in recs_fc if should_notify_forecast(r, today)]
+                if to_send_fc:
+                    print(f"✉️ Sending forecast to {[r['email'] for r in to_send_fc]}")
+                    notify.send_forecast_email(to_send_fc, city, details_fc)
+                    update_last_notified(sheet_fc, to_send_fc, today)
+                else:
+                    print("✔️ Forecast: already sent today, skipping.")
+            else:
+                print(f"⏳ Forecast queued for {details_fc['notify_time']} (now {now_dt.hour}h).")
         else:
-            print("🚫 Conditions not met; skipping send.")
+            print("🚫 Forecast: no kp crossing threshold.")
 
 if __name__ == "__main__":
     run()

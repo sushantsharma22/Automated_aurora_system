@@ -1,7 +1,7 @@
 name: Aurora-Alert
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 * * * *'       # at minute 0 of every hour
   workflow_dispatch:
 
 jobs:
