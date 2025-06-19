@@ -1,5 +1,7 @@
+/* Background & Base Styles */
 body {
-  background: #0b1e2d;
+  background: url('images/v2osk-Ovn1hyBge38-unsplash.jpg') no-repeat center center fixed;
+  background-size: cover;
   color: #e6f7ff;
   font-family: 'Segoe UI', sans-serif;
   display: flex;
@@ -7,54 +9,119 @@ body {
   align-items: center;
   min-height: 100vh;
   margin: 0;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
+/* Form Container */
 .container {
-  background: #142c3e;
+  background: rgba(10, 25, 20, 0.4); /* aurora green tinted overlay */
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 0 15px #0ff;
+  border-radius: 16px;
+  box-shadow: 0 0 20px #00ff99; /* green glow */
   width: 100%;
   max-width: 400px;
+  box-sizing: border-box;
 }
 
+/* Heading */
 h1 {
   text-align: center;
-  color: #00eaff;
+  color: #00ff99;
   margin-bottom: 1.5rem;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
 }
 
+/* Labels */
 label {
   display: block;
   margin: 0.5rem 0 0.25rem;
+  font-size: 1rem;
 }
 
+/* Inputs and Select */
 input, select {
   width: 100%;
   padding: 0.5rem;
+  height: 42px;
   border-radius: 6px;
-  border: none;
+  border: 1px solid #00ff99;
   margin-bottom: 1rem;
+  font-size: 1rem;
+  background: #002219;
+  color: #e6f7ff;
+  appearance: none;
+  box-sizing: border-box;
 }
 
+input::placeholder {
+  color: #a8eccc;
+}
+
+/* Custom Select Arrow */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3Cpath fill='%23e6f7ff' d='M2 0L0 2h4L2 0zM2 5l2-2H0l2 2z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 12px;
+  padding-right: 2rem;
+}
+
+/* Button */
 button {
   width: 100%;
-  background: #00eaff;
-  color: #000;
+  background: #00ff99;
+  color: #002219;
   border: none;
   padding: 0.75rem;
   border-radius: 6px;
   font-weight: bold;
+  font-size: 1rem;
   cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 
 button:hover {
-  background: #00c8d7;
+  background: #00e68a;
+  transform: translateY(-1px);
 }
 
+/* Footer */
 .footer {
   font-size: 0.8rem;
   text-align: center;
   margin-top: 1rem;
-  color: #ccc;
+  color: #a8eccc;
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .container {
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 0 12px #00ff99;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 1.2rem;
+  }
+
+  label {
+    font-size: 0.95rem;
+  }
+
+  input, select, button {
+    font-size: 0.9rem;
+    padding: 0.6rem;
+    height: 40px;
+  }
+
+  .footer {
+    font-size: 0.7rem;
+  }
 }

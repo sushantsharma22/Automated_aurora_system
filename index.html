@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🌌 Aurora Alert Signup</title>
-  <link rel="stylesheet" href="web/style.css">
+  <link rel="stylesheet" href="web/style.css" />
 </head>
 <body>
   <div class="container">
     <h1>🌌 Aurora Alert Signup</h1>
     <form action="https://script.google.com/macros/s/AKfycbw0z6IM2tqpUvbnkjjLdA5tZ5z7RxTHXzJ_NBjoG9lx5jLETvbdQSCEf_4EWrPY2Plg/exec" method="POST">
       <label for="name">Name:</label>
-      <input type="text" name="name" required>
+      <input type="text" id="name" name="name" required autocomplete="name" />
 
       <label for="email">Email:</label>
-      <input type="email" name="email" required>
+      <input type="email" id="email" name="email" required autocomplete="email" />
 
       <label for="city">City:</label>
-      <select name="city" required>
+      <select id="city" name="city" required>
         <option value="">Select your city</option>
         <option value="Windsor">Windsor</option>
         <option value="Toronto">Toronto</option>

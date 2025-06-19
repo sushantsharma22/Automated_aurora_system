@@ -1,6 +1,9 @@
 from datetime import timedelta
 import os
 from dotenv import load_dotenv
+import pytz
+
+TZ = pytz.timezone("America/Toronto")
 
 load_dotenv()  # Load .env values into os.environ
 

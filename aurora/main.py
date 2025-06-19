@@ -15,7 +15,8 @@ def load_recipients(city_name):
     """
     Load sheet rows for this city.
     """
-    creds = json.loads(os.environ["GOOGLE_SHEETS_CREDS"])
+    with open(os.environ["GOOGLE_SHEETS_CREDS_FILE"], "r") as f:
+        creds = json.load(f)
     scope = [
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive"
