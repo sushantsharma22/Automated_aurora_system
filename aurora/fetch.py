@@ -6,36 +6,39 @@ import pytz
 from dateutil import parser
 
 # NOAA endpoints
-BASE         = "https://services.swpc.noaa.gov"
-REALTIME_URL = f"{BASE}/json/planetary_k_index_1m.json"
-FORECAST_URL = f"{BASE}/json/3-day-forecast.json"
-
-# Local timezone
-TZ = pytz.timezone("America/Toronto")
+BASE              = "https://services.swpc.noaa.gov"
+REALTIME_URL      = f"{BASE}/json/planetary_k_index_1m.json"
+FORECAST_URL      = f"{BASE}/products/noaa-planetary-k-index-forecast.json"  # ← corrected
+TZ                = pytz.timezone("America/Toronto")
 
 def kp_now():
     """
-    Latest *measured* planetary K-index.
-    Returns (kp_index: float, time: datetime[TZ]).
+    Fetch the latest *measured* planetary K-index.
     """
     resp = requests.get(REALTIME_URL, timeout=10)
     resp.raise_for_status()
     rec = resp.json()[-1]
-    t = parser.isoparse(rec["time_tag"]).astimezone(TZ)
-    return float(rec["kp_index"]), t
+    return (
+        float(rec["kp_index"]),
+        parser.isoparse(rec["time_tag"]).astimezone(TZ)
+    )
 
 def kp_forecast():
     """
-    NOAA 3-day *predicted* K-index in 3-h steps.
-    Returns List[(kp: float, time: datetime[TZ])].
+    Fetch NOAA’s 3-day *predicted* K-index feed.
+    Returns a list of (kp: float, time: datetime[TZ]) for predicted entries only.
     """
     resp = requests.get(FORECAST_URL, timeout=10)
     resp.raise_for_status()
+    data = resp.json()
     out = []
-    for rec in resp.json():
-        t  = parser.isoparse(rec["time_tag"]).astimezone(TZ)
-        kp = float(rec["kp_index"])
-        out.append((kp, t))
+    for rec in data:
+        # rec is like ["2025-06-20 00:00:00", "3.67", "predicted", null]
+        time_tag, kp_str, obs_flag = rec[0], rec[1], rec[2]
+        if obs_flag != "observed":    # only take the forecasted points
+            t  = parser.isoparse(time_tag + "Z").astimezone(TZ)
+            kp = float(kp_str)
+            out.append((kp, t))
     return out
 
 def cloud_pct(lat, lon):
