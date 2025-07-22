@@ -6,10 +6,8 @@ import datetime as dt
 import pytz
 from dateutil import parser
 
-# -------------------------------------------------------------------
 # suppress the InsecureRequestWarning when we disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-# -------------------------------------------------------------------
 
 # NOAA endpoints
 BASE              = "https://services.swpc.noaa.gov"
