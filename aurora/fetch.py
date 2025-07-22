@@ -1,15 +1,22 @@
 # aurora/fetch.py
 
 import requests
+import urllib3
 import datetime as dt
 import pytz
 from dateutil import parser
 
+# -------------------------------------------------------------------
+# suppress the InsecureRequestWarning when we disable SSL verification
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# -------------------------------------------------------------------
+
 # NOAA endpoints
 BASE              = "https://services.swpc.noaa.gov"
 REALTIME_URL      = f"{BASE}/json/planetary_k_index_1m.json"
-FORECAST_URL      = f"{BASE}/products/noaa-planetary-k-index-forecast.json"  # ← corrected
+FORECAST_URL      = f"{BASE}/products/noaa-planetary-k-index-forecast.json"
 TZ                = pytz.timezone("America/Toronto")
+
 
 def kp_now():
     """
@@ -22,6 +29,7 @@ def kp_now():
         float(rec["kp_index"]),
         parser.isoparse(rec["time_tag"]).astimezone(TZ)
     )
+
 
 def kp_forecast():
     """
@@ -41,6 +49,7 @@ def kp_forecast():
             out.append((kp, t))
     return out
 
+
 def cloud_pct(lat, lon):
     """
     Current cloud cover % from Open-Meteo.
@@ -49,7 +58,10 @@ def cloud_pct(lat, lon):
         f"https://api.open-meteo.com/v1/forecast"
         f"?latitude={lat}&longitude={lon}&current=cloud_cover"
     )
-    return requests.get(url, timeout=10).json()["current"]["cloud_cover"]
+    resp = requests.get(url, timeout=10)
+    resp.raise_for_status()
+    return resp.json()["current"]["cloud_cover"]
+
 
 def sun_times(lat, lon, date):
     """
@@ -60,15 +72,22 @@ def sun_times(lat, lon, date):
         f"https://api.sunrise-sunset.org/json"
         f"?lat={lat}&lng={lon}&date={date}&formatted=0"
     )
-    j = requests.get(url, timeout=10).json()["results"]
+    resp = requests.get(url, timeout=10)
+    resp.raise_for_status()
+    j = resp.json()["results"]
     sr = dt.datetime.fromisoformat(j["sunrise"]).astimezone(TZ)
     ss = dt.datetime.fromisoformat(j["sunset"]).astimezone(TZ)
     return sr, ss
+
 
 def moon_illumination(date):
     """
     Moon illumination % from FarmSense.
     """
-    ts = int(date.strftime("%s"))
+    ts  = int(date.timestamp())
     url = f"https://api.farmsense.net/v1/moonphases/?d={ts}"
-    return float(requests.get(url, timeout=10).json()[0]["Illumination"])
+    # disable SSL verification to avoid the expired-certificate error
+    resp = requests.get(url, timeout=10, verify=False)
+    resp.raise_for_status()
+    data = resp.json()
+    return float(data[0]["Illumination"])

@@ -1,37 +1,11 @@
-# test.py
-
 import os
-import json
 import datetime as dt
 from dotenv import load_dotenv
 load_dotenv()
 
 from aurora import fetch, process, notify, config
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-# Confirm paths
-print("📂 Current directory:", os.getcwd())
 
 TZ = config.TZ
-
-def test_google_sheet():
-    print("\n🔍 Testing Google Sheets access...")
-    cred_path = os.path.abspath("google-creds.json")
-    print("📄 Using absolute path:", cred_path)
-
-    with open(cred_path, "r") as f:
-        creds = json.load(f)
-
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(creds, scope))
-    sheet = client.open_by_key(os.environ["GOOGLE_SHEET_ID"]).worksheet("Recipients")
-    rows = sheet.get_all_records()
-    print(f"✅ Sheet loaded. {len(rows)} rows found.")
-    return sheet, rows
 
 def test_fetch_kp():
     print("\n🔍 Testing real-time Kp fetch...")
@@ -76,7 +50,8 @@ def test_email_dry_run(city, recipients, now_result, forecast_details):
         print("❌ Email formatting failed:", e)
 
 def main():
-    sheet, rows = test_google_sheet()
+    print("📂 Current directory:", os.getcwd())
+
     (kp, kp_time), forecast = test_fetch_kp()
 
     city = config.CITIES[0]
