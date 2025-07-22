@@ -6,14 +6,16 @@ import datetime as dt
 import pytz
 from dateutil import parser
 
-# suppress the InsecureRequestWarning when we disable SSL verification
+
+# suppress the InsecureRequestWarning when we disable SSL verify
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+
 # NOAA endpoints
-BASE              = "https://services.swpc.noaa.gov"
-REALTIME_URL      = f"{BASE}/json/planetary_k_index_1m.json"
-FORECAST_URL      = f"{BASE}/products/noaa-planetary-k-index-forecast.json"
-TZ                = pytz.timezone("America/Toronto")
+BASE         = "https://services.swpc.noaa.gov"
+REALTIME_URL = f"{BASE}/json/planetary_k_index_1m.json"
+FORECAST_URL = f"{BASE}/products/noaa-planetary-k-index-forecast.json"
+TZ           = pytz.timezone("America/Toronto")
 
 
 def kp_now():
@@ -39,7 +41,6 @@ def kp_forecast():
     data = resp.json()
     out = []
     for rec in data:
-        # rec is like ["2025-06-20 00:00:00", "3.67", "predicted", null]
         time_tag, kp_str, obs_flag = rec[0], rec[1], rec[2]
         if obs_flag != "observed":    # only take the forecasted points
             t  = parser.isoparse(time_tag + "Z").astimezone(TZ)
@@ -72,7 +73,7 @@ def sun_times(lat, lon, date):
     )
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
-    j = resp.json()["results"]
+    j  = resp.json()["results"]
     sr = dt.datetime.fromisoformat(j["sunrise"]).astimezone(TZ)
     ss = dt.datetime.fromisoformat(j["sunset"]).astimezone(TZ)
     return sr, ss
@@ -82,10 +83,16 @@ def moon_illumination(date):
     """
     Moon illumination % from FarmSense.
     """
+    # ensure we have a datetime, not just a date
+    if isinstance(date, dt.date) and not isinstance(date, dt.datetime):
+        date = dt.datetime(date.year, date.month, date.day)
+
     ts  = int(date.timestamp())
     url = f"https://api.farmsense.net/v1/moonphases/?d={ts}"
-    # disable SSL verification to avoid the expired-certificate error
+
+    # disable cert verification to avoid the expired-certificate error
     resp = requests.get(url, timeout=10, verify=False)
     resp.raise_for_status()
+
     data = resp.json()
     return float(data[0]["Illumination"])
