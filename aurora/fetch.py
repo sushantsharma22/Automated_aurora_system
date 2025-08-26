@@ -5,6 +5,7 @@ import urllib3
 import datetime as dt
 import pytz
 from dateutil import parser
+import math
 
 
 # suppress the InsecureRequestWarning when we disable SSL verify
@@ -91,8 +92,36 @@ def moon_illumination(date):
     url = f"https://api.farmsense.net/v1/moonphases/?d={ts}"
 
     # disable cert verification to avoid the expired-certificate error
-    resp = requests.get(url, timeout=10, verify=False)
-    resp.raise_for_status()
+    try:
+        resp = requests.get(url, timeout=10, verify=False)
+        resp.raise_for_status()
+        data = resp.json()
+        # Farmsense returns Illumination as a percentage-like number
+        return float(data[0]["Illumination"])
+    except (requests.exceptions.SSLError, requests.exceptions.RequestException, KeyError, IndexError):
+        # If the external API fails (SSL handshake, network, or unexpected JSON),
+        # compute an approximate illumination fraction locally so the workflow
+        # can continue without external dependency.
+        # Algorithm: use simple synodic-month age -> illumination formula.
+        def _julian_date(dt_obj: dt.datetime) -> float:
+            y = dt_obj.year
+            m = dt_obj.month
+            # include fractional day
+            day = dt_obj.day + (dt_obj.hour + dt_obj.minute / 60.0 + dt_obj.second / 3600.0) / 24.0
+            if m <= 2:
+                y -= 1
+                m += 12
+            A = math.floor(y / 100)
+            B = 2 - A + math.floor(A / 4)
+            jd = math.floor(365.25 * (y + 4716)) + math.floor(30.6001 * (m + 1)) + day + B - 1524.5
+            return jd
 
-    data = resp.json()
-    return float(data[0]["Illumination"])
+        jd = _julian_date(date)
+        # days since known new moon epoch (J2000-ish)
+        days_since_epoch = jd - 2451550.1
+        synodic_month = 29.53058867
+        # age into current lunar cycle
+        age = days_since_epoch % synodic_month
+        # illuminated fraction (0..1)
+        frac = (1 - math.cos(2 * math.pi * age / synodic_month)) / 2
+        return float(frac * 100.0)
