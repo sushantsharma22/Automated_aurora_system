@@ -20,7 +20,11 @@ jobs:
       - name: Setup Google Sheets credentials
         env:
           GOOGLE_CREDS: ${{ secrets.GOOGLE_SHEETS_CREDS }}
-        run: echo "$GOOGLE_CREDS" > google-creds.json
+        run: |
+          echo "$GOOGLE_CREDS" > google-creds.json
+          echo "Credentials file created, size: $(wc -c < google-creds.json) bytes"
+          head -c 100 google-creds.json
+          echo ""
 
       - name: Run monitor
         env:
