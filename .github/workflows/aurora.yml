@@ -17,10 +17,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Setup Google Sheets credentials
+        run: echo '${{ secrets.GOOGLE_SHEETS_CREDS }}' > google-creds.json
+
       - name: Run monitor
         env:
-          MAIL_FROM:           ${{ secrets.MAIL_FROM }}
-          MAIL_APP_PASS:       ${{ secrets.MAIL_APP_PASS }}
-          GOOGLE_SHEET_ID:     ${{ secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_SHEETS_CREDS: ${{ secrets.GOOGLE_SHEETS_CREDS }}
+          MAIL_FROM:                ${{ secrets.MAIL_FROM }}
+          MAIL_APP_PASS:            ${{ secrets.MAIL_APP_PASS }}
+          GOOGLE_SHEET_ID:          ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEETS_CREDS_FILE: google-creds.json
         run: python -m aurora.main
