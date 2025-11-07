@@ -59,8 +59,9 @@ def evaluate_forecast(city, forecast):
       }
     """
     kp_min = city["kp_min"]
-    # earliest crossing
-    event = next(((kp, t) for kp, t in forecast if kp >= kp_min), None)
+    now = dt.datetime.now(dt.timezone.utc)
+    # earliest crossing that is in the future
+    event = next(((kp, t) for kp, t in forecast if kp >= kp_min and t > now), None)
     if event is None:
         return False, {}
 

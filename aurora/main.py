@@ -60,7 +60,8 @@ def update_last_rt(sheet, recs, now_iso):
 
 def update_last_notified(sheet, recs, today):
     for r in recs:
-        sheet.update_cell(r["_sheet_row"], 4, str(today))  # col 4 is last_notified
+        date_str = today.strftime("%d/%m/%Y")  # Format as DD/MM/YYYY without time
+        sheet.update_cell(r["_sheet_row"], 4, date_str)  # col 4 is last_notified
 
 
 def run():

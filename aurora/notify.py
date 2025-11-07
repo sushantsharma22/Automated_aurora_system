@@ -87,9 +87,8 @@ def send_forecast_email(recipients, city, details):
             f"Hello {name},\n\n"
             f"Aurora activity is expected soon in {city['name']}:\n"
             f"• Kp Index: {details['kp']}\n"
-            f"• Peak Time (UTC): {details['event_time']}\n"
-            f"• Your alert threshold: {details['kp_min']}\n\n"
-            f"You’re receiving this alert because you're subscribed to updates for {city['name']}.\n"
+            f"• Peak Time: {details['event_time']}\n\n"
+            f"You're receiving this alert because you're subscribed to updates for {city['name']}.\n"
             f"Reply with \"unsubscribe\" to stop receiving future alerts.\n"
         )
 
