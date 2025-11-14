@@ -12,7 +12,7 @@ CITIES = [
         name="Windsor",
         lat=42.3149,
         lon=-83.0364,
-        kp_min=6,
+    kp_min=7,
     ),
 ]
 
