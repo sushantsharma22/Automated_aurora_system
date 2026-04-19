@@ -42,11 +42,28 @@ def kp_forecast():
     data = resp.json()
     out = []
     for rec in data:
-        time_tag, kp_str, obs_flag = rec[0], rec[1], rec[2]
-        if obs_flag != "observed":    # only take the forecasted points
-            t  = parser.isoparse(time_tag + "Z").astimezone(TZ)
-            kp = float(kp_str)
-            out.append((kp, t))
+        # NOAA has served both list rows and dict rows over time.
+        if isinstance(rec, dict):
+            time_tag = rec.get("time_tag")
+            kp_str = rec.get("kp")
+            obs_flag = rec.get("observed")
+        elif isinstance(rec, (list, tuple)) and len(rec) >= 3:
+            time_tag, kp_str, obs_flag = rec[0], rec[1], rec[2]
+        else:
+            continue
+
+        if obs_flag == "observed":
+            continue
+        if not time_tag or kp_str is None:
+            continue
+
+        # Append UTC suffix only when it is missing.
+        if isinstance(time_tag, str) and not time_tag.endswith(("Z", "z")) and "+" not in time_tag:
+            time_tag = time_tag + "Z"
+
+        t = parser.isoparse(time_tag).astimezone(TZ)
+        kp = float(kp_str)
+        out.append((kp, t))
     return out
 
 
