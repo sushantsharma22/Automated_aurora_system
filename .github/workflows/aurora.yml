@@ -15,16 +15,46 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate required secrets
+        env:
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_APP_PASS: ${{ secrets.MAIL_APP_PASS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEETS_CREDS: ${{ secrets.GOOGLE_SHEETS_CREDS }}
+        run: |
+          missing=0
+          for key in MAIL_FROM MAIL_APP_PASS GOOGLE_SHEET_ID GOOGLE_SHEETS_CREDS; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing required secret: $key"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Setup Google Sheets credentials
         env:
-          GOOGLE_CREDS: ${{ secrets.GOOGLE_SHEETS_CREDS }}
+          GOOGLE_SHEETS_CREDS: ${{ secrets.GOOGLE_SHEETS_CREDS }}
         run: |
-          echo "$GOOGLE_CREDS" > google-creds.json
-          echo "Credentials file created, size: $(wc -c < google-creds.json) bytes"
-          head -c 100 google-creds.json
-          echo ""
+          printf '%s' "$GOOGLE_SHEETS_CREDS" > google-creds.json
+          python - <<'PY'
+          import json
+
+          with open("google-creds.json", "r", encoding="utf-8") as f:
+              data = json.load(f)
+
+          required = ["type", "project_id", "client_email", "private_key"]
+          missing = [k for k in required if not data.get(k)]
+          if missing:
+              raise SystemExit(f"Missing key(s) in GOOGLE_SHEETS_CREDS JSON: {', '.join(missing)}")
+
+          print("Google credentials JSON parsed successfully.")
+          PY
 
       - name: Run monitor
         env:
@@ -32,4 +62,5 @@ jobs:
           MAIL_APP_PASS:            ${{ secrets.MAIL_APP_PASS }}
           GOOGLE_SHEET_ID:          ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SHEETS_CREDS_FILE: google-creds.json
+          PYTHONUNBUFFERED:         '1'
         run: python -m aurora.main
